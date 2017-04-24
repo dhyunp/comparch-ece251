@@ -1,0 +1,114 @@
+C51 COMPILER V9.53.0.0   MAIN                                                              04/24/2017 18:17:28 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\src\main.OBJ
+COMPILER INVOKED BY: c:\SiliconLabs\SimplicityStudio\v4\developer\toolchains\keil_8051\9.53\BIN\C51.exe C:\Users\student
+                    -\SimplicityStudio\v4_workspace\Stopwatch\src\main.c OMF2 SMALL DEBUG OBJECTEXTEND ROM(LARGE) WARNINGLEVEL(2) FLOATFUZZY(
+                    -3) OPTIMIZE(8,SPEED) DEFINE(DEBUG=1) INTVECTOR(0X0000) INTPROMOTE INCDIR(C:\Users\student\SimplicityStudio\v4_workspace\
+                    -Stopwatch\inc;C:\Users\student\SimplicityStudio\v4_workspace\Stopwatch\inc\config;C:\Users\student\SimplicityStudio\v4_w
+                    -orkspace\Stopwatch\inc\graphics;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//Device/EFM8BB3/peripheral
+                    -_driver/inc;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//kits/common/bsp;C:/SiliconLabs/SimplicityStud
+                    -io/v4/developer/sdks/8051/v4.0.3//kits/EFM8BB3_SLSTK2022A/config;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/
+                    -v4.0.3//kits/common/drivers/efm8_memory_lcd/inc;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//kits/comm
+                    -on/drivers/efm8_memory_lcd/inc/graphics;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//kits/common/drive
+                    -rs/efm8_memory_lcd/inc/config;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//kits/common/drivers/efm8_jo
+                    -ystick;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//Device/shared/si8051base;C:/SiliconLabs/Simplicity
+                    -Studio/v4/developer/sdks/8051/v4.0.3//Device/EFM8BB3/inc) PRINT(.\src\main.lst) COND PAGEWIDTH(120) PAGELENGTH(65) OBJEC
+                    -T(.\src\main.OBJ)
+
+line level    source
+
+   1          //-----------------------------------------------------------------------------
+   2          // main.c
+   3          //-----------------------------------------------------------------------------
+   4          // Copyright 2014 Silicon Laboratories, Inc.
+   5          // http://developer.silabs.com/legal/version/v11/Silicon_Labs_Software_License_Agreement.txt
+   6          //
+   7          // Program Description:
+   8          //
+   9          // This demo demonstrates the ADC on the EFM8BB3 STK using the analog joystick
+  10          // or P1.1 as the ADC input.
+  11          //
+  12          // Resources:
+  13          //   SYSCLK - 24.5 MHz HFOSC0 / 1
+  14          //   ADC0   - 10-bit, VREF = VDD (3.3 V)
+  15          //   SPI0   - 1 MHz
+  16          //   Timer0 - ADC start of conversion
+  17          //   Timer2 - 2 MHz (SPI CS delay)
+  18          //   Timer3 - 1 kHz (1 ms tick)
+  19          //   P0.2   - Push button
+  20          //   P0.6   - SPI SCK
+  21          //   P1.0   - SPI MOSI
+  22          //   P1.1   - ADC input
+  23          //   P1.7   - ADC input/Joystick (analog voltage divider)
+  24          //   P2.6   - SPI CS (Active High)
+  25          //   P3.4   - Display enable
+  26          //
+  27          //-----------------------------------------------------------------------------
+  28          // How To Test: EFM8BB3 STK
+  29          //-----------------------------------------------------------------------------
+  30          // 1) Place the switch in "AEM" mode.
+  31          // 2) Connect the EFM8BB3 STK board to a PC using a mini USB cable.
+  32          // 3) Compile and download code to the EFM8BB3 STK board.
+  33          //    In Simplicity Studio IDE, select Run -> Debug from the menu bar,
+  34          //    click the Debug button in the quick menu, or press F11.
+  35          // 4) Run the code.
+  36          //    In Simplicity Studio IDE, select Run -> Resume from the menu bar,
+  37          //    click the Resume button in the quick menu, or press F8.
+  38          // 5) The Voltmeter demo should start.
+  39          //
+  40          // Target:         EFM8BB3
+  41          // Tool chain:     Generic
+  42          //
+  43          // Release 0.1 (ST)
+  44          //    - Initial Revision
+C51 COMPILER V9.53.0.0   MAIN                                                              04/24/2017 18:17:28 PAGE 2   
+
+  45          //    - 15 JUL 2015
+  46          //
+  47          
+  48          /////////////////////////////////////////////////////////////////////////////
+  49          // Includes
+  50          /////////////////////////////////////////////////////////////////////////////
+  51          
+  52          #include "bsp.h"
+  53          #include "InitDevice.h"
+  54          #include "disp.h"
+  55          
+  56          //---------------------------------------------------------------------------
+  57          // main() Routine
+  58          // --------------------------------------------------------------------------
+  59          int main(void)
+  60          {
+  61   1        // Enter default mode
+  62   1        enter_DefaultMode_from_RESET();
+  63   1      
+  64   1        // Enable all interrupts
+  65   1        IE_EA = 1;
+  66   1      
+  67   1        DISP_Init();
+  68   1        Stopwatch();
+*** WARNING C206 IN LINE 68 OF C:\Users\student\SimplicityStudio\v4_workspace\Stopwatch\src\main.c: 'Stopwatch': missing
+             - function-prototype
+  69   1      
+  70   1        while (1);
+  71   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     13    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

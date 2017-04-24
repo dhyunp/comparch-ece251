@@ -1,0 +1,130 @@
+C51 COMPILER V9.53.0.0   JOYSTICK                                                          04/24/2017 18:05:39 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE JOYSTICK
+OBJECT MODULE PLACED IN .\lib\bsp\efm8_joystick\joystick.OBJ
+COMPILER INVOKED BY: c:\SiliconLabs\SimplicityStudio\v4\developer\toolchains\keil_8051\9.53\BIN\C51.exe C:\SiliconLabs\S
+                    -implicityStudio\v4\developer\sdks\8051\v4.0.3\kits\common\drivers\efm8_joystick\joystick.c OMF2 SMALL DEBUG OBJECTEXTEND
+                    - ROM(LARGE) WARNINGLEVEL(2) FLOATFUZZY(3) OPTIMIZE(8,SPEED) DEFINE(DEBUG=1) INTVECTOR(0X0000) INTPROMOTE INCDIR(C:\Users
+                    -\student\SimplicityStudio\v4_workspace\Stopwatch\inc;C:\Users\student\SimplicityStudio\v4_workspace\Stopwatch\inc\config
+                    -;C:\Users\student\SimplicityStudio\v4_workspace\Stopwatch\inc\graphics;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks
+                    -/8051/v4.0.3//Device/EFM8BB3/peripheral_driver/inc;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//kits/c
+                    -ommon/bsp;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//kits/EFM8BB3_SLSTK2022A/config;C:/SiliconLabs/S
+                    -implicityStudio/v4/developer/sdks/8051/v4.0.3//kits/common/drivers/efm8_memory_lcd/inc;C:/SiliconLabs/SimplicityStudio/v
+                    -4/developer/sdks/8051/v4.0.3//kits/common/drivers/efm8_memory_lcd/inc/graphics;C:/SiliconLabs/SimplicityStudio/v4/develo
+                    -per/sdks/8051/v4.0.3//kits/common/drivers/efm8_memory_lcd/inc/config;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8
+                    -051/v4.0.3//kits/common/drivers/efm8_joystick;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//Device/shar
+                    -ed/si8051base;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//Device/EFM8BB3/inc) PRINT(.\lib\bsp\efm8_jo
+                    -ystick\joystick.lst) COND PAGEWIDTH(120) PAGELENGTH(65) OBJECT(.\lib\bsp\efm8_joystick\joystick.OBJ)
+
+line level    source
+
+   1          /////////////////////////////////////////////////////////////////////////////
+   2          // joystick.c
+   3          /////////////////////////////////////////////////////////////////////////////
+   4          
+   5          
+   6          /////////////////////////////////////////////////////////////////////////////
+   7          // Includes
+   8          /////////////////////////////////////////////////////////////////////////////
+   9          
+  10          #include "bsp.h"
+  11          #include "joystick.h"
+  12          
+  13          /////////////////////////////////////////////////////////////////////////////
+  14          // Global Functions
+  15          /////////////////////////////////////////////////////////////////////////////
+  16          
+  17          //-----------------------------------------------------------------------------
+  18          // JOYSTICK_convert_mv_to_direction
+  19          //-----------------------------------------------------------------------------
+  20          //
+  21          // Converts ADC voltage (in mV) to cardinal/secondary direction. Direction is
+  22          // saved to joystickDirection global.
+  23          //
+  24          // This function should be called after a new ADC sample is ready.
+  25          //
+  26          // This function calls Voltmeter_direction_isr(), a 2nd level interrupt defined
+  27          // in the demo.
+  28          //
+  29          // mV - joystick voltage in millivolts (0 - 3300)
+  30          //
+  31          //-----------------------------------------------------------------------------
+  32          uint8_t JOYSTICK_convert_mv_to_direction(uint32_t mV)
+  33          {
+  34   1          uint8_t joystickDirection;
+  35   1      
+  36   1          // determine which direction pad was pressed
+  37   1          if ((mV <= JOYSTICK_MV_C + JOYSTICK_MV_ERROR))
+  38   1          {
+  39   2            joystickDirection = JOYSTICK_C;
+  40   2          }
+  41   1          else if ((mV >= JOYSTICK_MV_N - JOYSTICK_MV_ERROR) && \
+  42   1                   (mV <= JOYSTICK_MV_N + JOYSTICK_MV_ERROR))
+  43   1          {
+  44   2            joystickDirection = JOYSTICK_N;
+C51 COMPILER V9.53.0.0   JOYSTICK                                                          04/24/2017 18:05:39 PAGE 2   
+
+  45   2          }
+  46   1          else if ((mV >= JOYSTICK_MV_E - JOYSTICK_MV_ERROR) && \
+  47   1                   (mV <= JOYSTICK_MV_E + JOYSTICK_MV_ERROR))
+  48   1          {
+  49   2            joystickDirection = JOYSTICK_E;
+  50   2          }
+  51   1          else if ((mV >= JOYSTICK_MV_S - JOYSTICK_MV_ERROR) && \
+  52   1                   (mV <= JOYSTICK_MV_S + JOYSTICK_MV_ERROR))
+  53   1          {
+  54   2            joystickDirection = JOYSTICK_S;
+  55   2          }
+  56   1          else if ((mV >= JOYSTICK_MV_W - JOYSTICK_MV_ERROR) && \
+  57   1                   (mV <= JOYSTICK_MV_W + JOYSTICK_MV_ERROR))
+  58   1          {
+  59   2            joystickDirection = JOYSTICK_W;
+  60   2          }
+  61   1      #if JOYSTICK_DIRECTIONS == CARDINAL_AND_SECONDARY
+  62   1          else if ((mV >= JOYSTICK_MV_NE - JOYSTICK_MV_ERROR) && \
+  63   1                   (mV <= JOYSTICK_MV_NE + JOYSTICK_MV_ERROR))
+  64   1          {
+  65   2            joystickDirection = JOYSTICK_NE;
+  66   2          }
+  67   1          else if ((mV >= JOYSTICK_MV_NW - JOYSTICK_MV_ERROR) && \
+  68   1                   (mV <= JOYSTICK_MV_NW + JOYSTICK_MV_ERROR))
+  69   1          {
+  70   2            joystickDirection = JOYSTICK_NW;
+  71   2          }
+  72   1          else if ((mV >= JOYSTICK_MV_SE - JOYSTICK_MV_ERROR) && \
+  73   1                   (mV <= JOYSTICK_MV_SE + JOYSTICK_MV_ERROR))
+  74   1          {
+  75   2            joystickDirection = JOYSTICK_SE;
+  76   2          }
+  77   1          else if ((mV >= JOYSTICK_MV_SW - JOYSTICK_MV_ERROR) && \
+  78   1                   (mV <= JOYSTICK_MV_SW + JOYSTICK_MV_ERROR))
+  79   1          {
+  80   2            joystickDirection = JOYSTICK_SW;
+  81   2          }
+  82   1      #endif
+  83   1          else
+  84   1          {
+  85   2            joystickDirection = JOYSTICK_NONE;
+  86   2          }
+  87   1      
+  88   1          return joystickDirection;
+  89   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    372    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       5
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

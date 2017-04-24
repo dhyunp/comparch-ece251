@@ -1,0 +1,789 @@
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE RENDER
+OBJECT MODULE PLACED IN .\lib\bsp\efm8_memory_lcd\src\render.OBJ
+COMPILER INVOKED BY: c:\SiliconLabs\SimplicityStudio\v4\developer\toolchains\keil_8051\9.53\BIN\C51.exe C:\SiliconLabs\S
+                    -implicityStudio\v4\developer\sdks\8051\v4.0.3\kits\common\drivers\efm8_memory_lcd\src\render.c OMF2 SMALL DEBUG OBJECTEX
+                    -TEND ROM(LARGE) WARNINGLEVEL(2) FLOATFUZZY(3) OPTIMIZE(8,SPEED) DEFINE(DEBUG=1) INTVECTOR(0X0000) INTPROMOTE INCDIR(C:\U
+                    -sers\student\SimplicityStudio\v4_workspace\Stopwatch\inc;C:\Users\student\SimplicityStudio\v4_workspace\Stopwatch\inc\co
+                    -nfig;C:\Users\student\SimplicityStudio\v4_workspace\Stopwatch\inc\graphics;C:/SiliconLabs/SimplicityStudio/v4/developer/
+                    -sdks/8051/v4.0.3//Device/EFM8BB3/peripheral_driver/inc;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//ki
+                    -ts/common/bsp;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//kits/EFM8BB3_SLSTK2022A/config;C:/SiliconLa
+                    -bs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//kits/common/drivers/efm8_memory_lcd/inc;C:/SiliconLabs/SimplicityStud
+                    -io/v4/developer/sdks/8051/v4.0.3//kits/common/drivers/efm8_memory_lcd/inc/graphics;C:/SiliconLabs/SimplicityStudio/v4/de
+                    -veloper/sdks/8051/v4.0.3//kits/common/drivers/efm8_memory_lcd/inc/config;C:/SiliconLabs/SimplicityStudio/v4/developer/sd
+                    -ks/8051/v4.0.3//kits/common/drivers/efm8_joystick;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//Device/
+                    -shared/si8051base;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.3//Device/EFM8BB3/inc) PRINT(.\lib\bsp\efm
+                    -8_memory_lcd\src\render.lst) COND PAGEWIDTH(120) PAGELENGTH(65) OBJECT(.\lib\bsp\efm8_memory_lcd\src\render.OBJ)
+
+line level    source
+
+   1          /////////////////////////////////////////////////////////////////////////////
+   2          // Render.c
+   3          /////////////////////////////////////////////////////////////////////////////
+   4          
+   5          /////////////////////////////////////////////////////////////////////////////
+   6          // Includes
+   7          /////////////////////////////////////////////////////////////////////////////
+   8          
+   9          #include "bsp.h"
+  10          #include "disp.h"
+  11          #include "render.h"
+  12          #include <string.h>
+  13          
+  14          #if RENDER_STR_LINE_BUILD || RENDER_LARGE_STR_LINE_BUILD
+  15          #include "thinfont.h"
+  16          #endif
+  17          
+  18          #if RENDER_NUMERIC_BUILD
+              #include "thinfont_numeric.h"
+              #endif
+  21          
+  22          #if RENDER_VERTICAL_STR_LINE_BUILD
+              #include "verticalthinfont.h"
+              #endif
+  25          
+  26          /////////////////////////////////////////////////////////////////////////////
+  27          // Functions
+  28          /////////////////////////////////////////////////////////////////////////////
+  29          
+  30          #if LSB == 0
+              
+              uint16_t switchEndian(uint16_t value)
+              {
+                uint16_t switched = (value & 0xFF) << 8;
+                
+                switched += (value & 0xFF00) >> 8;
+                return switched;
+              }
+              
+              #endif
+  41          
+  42          /***************************************************************************//**
+  43           * @brief Return the size of the string in pixels
+  44           *
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 2   
+
+  45           * @param str a null-terminated string
+  46           *
+  47           * @return The width of a string in pixels as rendered by ::RENDER_StrLine()
+  48           *
+  49           *****************************************************************************/
+  50          uint8_t RENDER_GetStrSize(
+  51                  SI_VARIABLE_SEGMENT_POINTER(str, char, RENDER_STR_SEG))
+  52          {
+  53   1          uint8_t len = 0;
+  54   1          
+  55   1          while (str[len++] != 0);
+  56   1          len--;
+  57   1      
+  58   1          return (len * FONT_WIDTH + 2);
+  59   1      }
+  60          
+  61          /***************************************************************************//**
+  62           * @brief Clear the contents of a line buffer, setting its contents to the
+  63           * background color
+  64           *
+  65           * @param line a line buffer to clear
+  66           *        (length = ::DISP_BUF_SIZE; segment = ::RENDER_LINE_SEG)
+  67           *
+  68           *****************************************************************************/
+  69          void RENDER_ClrLine(
+  70                  SI_VARIABLE_SEGMENT_POINTER(line, uint8_t, RENDER_LINE_SEG))
+  71          {
+  72   1        uint8_t i;
+  73   1        
+  74   1        for (i = 0; i < DISP_BUF_SIZE; i++)
+  75   1        {
+  76   2          line[i] = DISP_BACKGROUND_COLOR;
+  77   2        }
+  78   1      }
+  79          
+  80          /***************************************************************************//**
+  81           * @brief Set a pixel in the line buffer to the foreground color
+  82           *
+  83           * @param line a line buffer to clear
+  84           *        (length = ::DISP_BUF_SIZE; segment = ::RENDER_LINE_SEG)
+  85           * @param posx the x-position of the pixel to turn on [0, ::DISP_WIDTH)
+  86           *
+  87           *****************************************************************************/
+  88          void RENDER_PixelLine(
+  89                  SI_VARIABLE_SEGMENT_POINTER(line, uint8_t, RENDER_LINE_SEG),
+  90                  uint8_t posx)
+  91          {
+  92   1      #if DISP_FOREGROUND_COLOR == COLOR_BLACK
+                  line[posx / 8] &= ~(0x80 >> (posx % 8));
+              #else
+  95   1          line[posx / 8] |= (0x80 >> (posx % 8));
+  96   1      #endif
+  97   1      }
+  98          
+  99          /***************************************************************************//**
+ 100           * @brief Set the pixels of a line segment of the range
+ 101           * [xstart, xstop] in the line buffer to the foreground color
+ 102           *
+ 103           * @param line a line buffer to clear
+ 104           *        (length = ::DISP_BUF_SIZE; segment = ::RENDER_LINE_SEG)
+ 105           * @param xstart the starting x-position of the line segment [0, ::DISP_WIDTH)
+ 106           * @param xstop the stopping x-position of the line segment [0, ::DISP_WIDTH)
+ 107           *
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 3   
+
+ 108           *****************************************************************************/
+ 109          void RENDER_LineSegmentLine(
+ 110                  SI_VARIABLE_SEGMENT_POINTER(line, uint8_t, RENDER_LINE_SEG),
+ 111                  uint8_t xstart,
+ 112                  uint8_t xstop)
+ 113          {
+ 114   1          uint8_t x;
+ 115   1          uint8_t swap;
+ 116   1      
+ 117   1          // Swap the start/stop values
+ 118   1          if (xstart > xstop)
+ 119   1          {
+ 120   2              swap = xstop;
+ 121   2              xstop = xstart;
+ 122   2              xstart = swap;
+ 123   2          }
+ 124   1      
+ 125   1          for (x = xstart; x <= xstop; x++)
+ 126   1          {
+ 127   2              RENDER_PixelLine(line, x);
+ 128   2          }
+ 129   1      }
+ 130          
+ 131          /***************************************************************************//**
+ 132           * @brief Write a string to a line buffer horizontally
+ 133           * (text reads from left to right, up facing up)
+ 134           *
+ 135           * @param line a line buffer to write to
+ 136           *        (length = ::DISP_BUF_SIZE; segment = ::RENDER_LINE_SEG)
+ 137           * @param posx the LCD x position for the left side of the text block
+ 138           * x = [0, ::DISP_WIDTH-STR_WIDTH)
+ 139           * @param posy the y position for the text row relative to the top side of the
+ 140           * text block y = [0, ::DISP_HEIGHT-STR_HEIGHT)
+ 141           * @param str a null-terminated string to write
+ 142           *
+ 143           * Example
+ 144           * -------
+ 145           *
+ 146           * ~~~
+ 147           *                   LCD TOP
+ 148           * RR _____________________________________
+ 149           * 00|                                     |
+ 150           * 01|                                     |
+ 151           * 02|                                     |
+ 152           * 03|   ____________________              |
+ 153           * 04|  | ___  ___  ___  ___ |< y=0        |
+ 154           * 05|  |  |  |    |      |  |             |
+ 155           * 06|  |  |  |---  ---   |  |< y=HEIGHT/2 |
+ 156           * 07|  |  |  |___  ___|  |  |             |
+ 157           * 08|  |____________________|< y=HEIGHT   |
+ 158           * 09|  ^                    ^             |
+ 159           * 10|  x                    x+WIDTH       |
+ 160           * 11|_____________________________________|
+ 161           *   C0000000000111111111122222222223333333
+ 162           *   C0123456789012345678901234567890123456
+ 163           * ~~~
+ 164           *
+ 165           * To display the text, "TEST" horizontally on the LCD with the
+ 166           * top-left corner of the text block located on the LCD at
+ 167           * row = 4, col = 3, call:
+ 168           *
+ 169           * ~~~{.c}
+ 170           * for (y = 0; y < FONT_HEIGHT; y++)
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 4   
+
+ 171           * {
+ 172           *    RENDER_StrLine(line, 3, y, "TEST");
+ 173           *    DISP_WriteLine(4+y, line);
+ 174           * }
+ 175           * ~~~
+ 176           *
+ 177           *****************************************************************************/
+ 178          #if RENDER_STR_LINE_BUILD
+              void RENDER_StrLine(
+                      SI_VARIABLE_SEGMENT_POINTER(line, uint8_t, RENDER_LINE_SEG),
+                      uint8_t posx,
+                      uint8_t posy,
+                      SI_VARIABLE_SEGMENT_POINTER(str, char, RENDER_STR_SEG))
+              {
+                  char c;
+                  uint8_t font_byte;
+              
+                  SI_VARIABLE_SEGMENT_POINTER(line16, uint16_t, RENDER_LINE_SEG);
+              #if LSB == 0
+                  uint16_t tmp = 0;
+              #endif
+              
+                  // String is null-terminated
+                  while (*str != '\0')
+                  {
+                      c = *str;
+              
+                      // Check for non-printable characters
+                      if (c < ' ' || c > '~')
+                      {
+                        c = ' ';
+                      }
+              
+                      // Don't write past the end of the line
+                      if (posx > (DISP_WIDTH - FONT_MAP_SPACING))
+                      {
+                          str++;
+                          posx += FONT_WIDTH;
+                          continue;
+                      }
+              
+                      font_byte = thinfont_bits[(c - ' ') + thinfont_width / 8 * posy];
+              
+                      // Calculate position in line buffer
+                      line16 = (SI_VARIABLE_SEGMENT_POINTER(, uint16_t, RENDER_LINE_SEG))(&line[posx / 8]);
+              
+                      // WARNING: This could be very dangerous without proper
+                      // bounds checking as this technically touches the
+                      // 17th byte of the 16 byte line buffer.
+                      //
+                      // However, we only allow posx to be 120 at max, which
+                      // leaves div = 15, rem = 0, which means we effectively don't
+                      // change the value of the 17th byte
+              
+              #if LSB == 0
+                      tmp = switchEndian(*line16);
+                      tmp &= ~(0xFF00 >> posx % 8);
+                      tmp |= (((uint16_t)font_byte << 8) >> (posx % 8));
+                      *line16 = switchEndian(tmp);
+              #else
+                      *line16 &= ~(0xFF00 >> posx % 8);
+                      *line16 |= (((uint16_t)font_byte << 8) >> (posx % 8));
+              #endif
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 5   
+
+              
+                      str++;
+                      posx += FONT_WIDTH;
+                  }
+              }
+              #endif
+ 240          
+ 241          /***************************************************************************//**
+ 242           * @brief Write a string to a line buffer
+ 243           *
+ 244           * @param line a line buffer to write to
+ 245           *        (length = ::DISP_BUF_SIZE; segment = ::RENDER_LINE_SEG)
+ 246           * @param posx the pixel x position to start writing [0 - ::DISP_WIDTH)
+ 247           * @param enlarged_font_byte enlarged font byte that is inserted into line buffer
+ 248           *
+ 249           *****************************************************************************/
+ 250          static void RENDER_byte(
+ 251                  SI_VARIABLE_SEGMENT_POINTER(line, uint8_t, RENDER_LINE_SEG),
+ 252                  uint8_t posx,
+ 253                  uint8_t enlarged_font_byte)
+ 254          {
+ 255   1      #if LSB == 0
+                      uint16_t tmp = 0;
+              #endif
+ 258   1        
+ 259   1        SI_VARIABLE_SEGMENT_POINTER(line16, uint16_t, RENDER_LINE_SEG);
+ 260   1        
+ 261   1              // Calculate position in line buffer
+ 262   1              line16 = (SI_VARIABLE_SEGMENT_POINTER(, uint16_t, RENDER_LINE_SEG))&line[posx / 8];
+ 263   1      
+ 264   1              // WARNING: This could be very dangerous without proper
+ 265   1              // bounds checking as this technically touches the
+ 266   1              // 17th byte of the 16 byte line buffer.
+ 267   1              //
+ 268   1              // However, we only allow posx to be 120 at max, which
+ 269   1              // leaves div = 15, rem = 0, which means we effectively don't
+ 270   1              // change the value of the 17th byte
+ 271   1      
+ 272   1      #if LSB == 0
+                      tmp = switchEndian(*line16);
+                      tmp &= ~(0xFF00 >> posx % 8);
+                      tmp |= (((uint16_t)enlarged_font_byte << 8) >> (posx % 8));
+                      *line16 = switchEndian(tmp);
+              #else
+ 278   1              *line16 &= ~(0xFF00 >> posx % 8);
+ 279   1              *line16 |= (((uint16_t)enlarged_font_byte << 8) >> (posx % 8));
+ 280   1      #endif
+ 281   1      }
+ 282          
+ 283          /***************************************************************************//**
+ 284           * @brief Write a string to a line buffer horizontally
+ 285           * (text reads from left to right, up facing up)
+ 286           *
+ 287           * @param line a line buffer to write to
+ 288           *        (length = ::DISP_BUF_SIZE; segment = ::RENDER_LINE_SEG)
+ 289           * @param posx the LCD x position for the left side of the text block
+ 290           * x = [0, ::DISP_WIDTH-STR_WIDTH)
+ 291           * @param posy the y position for the text row relative to the top side of the
+ 292           * text block y = [0, ::DISP_HEIGHT-STR_HEIGHT)
+ 293           * @param str a null-terminated string to write
+ 294           * @param fontScale can be enlarged from 2x to 4x. However, if larger than 5x, this
+ 295           *        function only renders 4x
+ 296           *
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 6   
+
+ 297           ******************************************************************************/
+ 298          #if RENDER_LARGE_STR_LINE_BUILD
+ 299          void RENDER_Large_StrLine(
+ 300                  SI_VARIABLE_SEGMENT_POINTER(line, uint8_t, RENDER_LINE_SEG),
+ 301                  uint8_t posx,
+ 302                  uint8_t posy,
+ 303                  SI_VARIABLE_SEGMENT_POINTER(str, char, RENDER_STR_SEG),
+ 304                  uint8_t fontScale)
+ 305          {
+ 306   1          char c;
+ 307   1          uint8_t font_byte;
+ 308   1          uint8_t i;
+ 309   1          uint8_t shiftOffset;
+ 310   1          uint32_t enlarged_font_byte;
+ 311   1      
+ 312   1          // String is null-terminated
+ 313   1          while (*str != '\0')
+ 314   1          {
+ 315   2              c = *str;
+ 316   2      
+ 317   2              // Check for non-printable characters
+ 318   2              if (c < ' ' || c > '~' + 1)
+ 319   2              {
+ 320   3                c = ' ';
+ 321   3              }
+ 322   2      
+ 323   2              // Don't write past the end of the line
+ 324   2              if (posx > (DISP_WIDTH - (FONT_MAP_SPACING * fontScale)))
+ 325   2              {
+ 326   3                  str++;
+ 327   3                  posx += FONT_WIDTH * fontScale;
+ 328   3                  continue;
+ 329   3              }
+ 330   2      
+ 331   2              font_byte = thinfont_bits[(c - ' ') + thinfont_width / 8 * posy];
+ 332   2      
+ 333   2              enlarged_font_byte = 0;
+ 334   2              for( i = 0; i < 8; i++) //for every bit in font_byte
+ 335   2              {
+ 336   3                      if(font_byte & 0x01)
+ 337   3                      {
+ 338   4                              if(fontScale == 1)
+ 339   4                              {
+ 340   5                                      enlarged_font_byte = ((enlarged_font_byte >> fontScale) | 0x80000000);
+ 341   5                              }
+ 342   4                              else if(fontScale == 2)
+ 343   4                                      {
+ 344   5                                              enlarged_font_byte = ((enlarged_font_byte >> fontScale) | 0xC0000000);
+ 345   5                                      }
+ 346   4                                      else if(fontScale == 3)
+ 347   4                                      {
+ 348   5                                              enlarged_font_byte = ((enlarged_font_byte >> fontScale) | 0xE0000000);
+ 349   5                                      }
+ 350   4                                      else
+ 351   4                                      {
+ 352   5                                              enlarged_font_byte = ((enlarged_font_byte >> fontScale) | 0xF0000000);
+ 353   5                                      }
+ 354   4                      }
+ 355   3                      else
+ 356   3                      {
+ 357   4                              enlarged_font_byte = (enlarged_font_byte >> fontScale);
+ 358   4                      }
+ 359   3                      font_byte = font_byte >> 1;
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 7   
+
+ 360   3              }
+ 361   2      
+ 362   2              for(i = 0; i < fontScale; i++)  //Number of bytes of a 32 bit variable
+ 363   2              {
+ 364   3                      shiftOffset = 32 - (8 * (i + 1));       //start with top byte move down to last byte
+ 365   3                      RENDER_byte(line, posx + (8 * i), (uint8_t)((enlarged_font_byte >> shiftOffset) & TO_BYTE_MASK));
+ 366   3              }
+ 367   2      
+ 368   2              str++;
+ 369   2              posx += FONT_WIDTH * fontScale;
+ 370   2          }
+ 371   1      }
+ 372          #endif
+ 373          
+ 374          /***************************************************************************//**
+ 375           * @brief Write numeric string to line buffer ('0'-'9' and ':')
+ 376           *
+ 377           * @param line a line buffer to write to
+ 378           *        (length = ::DISP_BUF_SIZE; segment = ::RENDER_LINE_SEG)
+ 379           * @param posx the LCD x position for the left side of the text block
+ 380           * x = [0, ::DISP_WIDTH-STR_WIDTH)
+ 381           * @param posy the y position for the text row relative to the top side of the
+ 382           * text block y = [0, ::DISP_HEIGHT-STR_HEIGHT)
+ 383           * @param str a null-terminated string to write
+ 384           * @param fontScale can be enlarged from 2x to 4x. However, if larger than 5x, this
+ 385           *        function only renders 4x
+ 386           *
+ 387           ******************************************************************************/
+ 388          #if RENDER_NUMERIC_BUILD
+              void RENDER_Numeric(
+                      SI_VARIABLE_SEGMENT_POINTER(line, uint8_t, RENDER_LINE_SEG),
+                      uint8_t posx,
+                      uint8_t posy,
+                      SI_VARIABLE_SEGMENT_POINTER(str, char, RENDER_STR_SEG),
+                      uint8_t fontScale)
+              {
+                  char c;
+                  uint8_t font_byte;
+                  uint8_t i;
+                  uint8_t shiftOffset;
+                  uint32_t enlarged_font_byte;
+              
+                  // String is null-terminated
+                  while (*str != '\0')
+                  {
+                      c = *str;
+              
+                      // Check for non-printable characters
+                      if (c < ' ' || c > '~' + 1)
+                      {
+                        c = ' ';
+                      }
+              
+                      // Don't write past the end of the line
+                      if (posx > (DISP_WIDTH - (FONT_MAP_SPACING * fontScale)))
+                      {
+                          str++;
+                          posx += FONT_WIDTH * fontScale;
+                          continue;
+                      }
+              
+                      font_byte = thinfont_numeric_bits[(c - '/') + thinfont_numeric_width / 8 * posy];
+              
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 8   
+
+                      enlarged_font_byte = 0;
+                      for( i = 0; i < 8; i++) //for every bit in font_byte
+                      {
+                              if(font_byte & 0x01)
+                              {
+                                      if(fontScale == 1)
+                                      {
+                                              enlarged_font_byte = ((enlarged_font_byte >> fontScale) | 0x80000000);
+                                      }
+                                      else if(fontScale == 2)
+                                              {
+                                                      enlarged_font_byte = ((enlarged_font_byte >> fontScale) | 0xC0000000);
+                                              }
+                                              else if(fontScale == 3)
+                                              {
+                                                      enlarged_font_byte = ((enlarged_font_byte >> fontScale) | 0xE0000000);
+                                              }
+                                              else
+                                              {
+                                                      enlarged_font_byte = ((enlarged_font_byte >> fontScale) | 0xF0000000);
+                                              }
+                              }
+                              else
+                              {
+                                      enlarged_font_byte = (enlarged_font_byte >> fontScale);
+                              }
+                              font_byte = font_byte >> 1;
+                      }
+              
+                      for(i = 0; i < fontScale; i++)  //Number of bytes of a 32 bit variable
+                      {
+                              shiftOffset = 32 - (8 * (i + 1));       //start with top byte move down to last byte
+                              RENDER_byte(line, posx + (8 * i), (uint8_t)((enlarged_font_byte >> shiftOffset) & TO_BYTE_MASK));
+                      }
+              
+                      str++;
+                      posx += FONT_WIDTH * fontScale;
+                  }
+              }
+              #endif
+ 463          
+ 464          /***************************************************************************//**
+ 465           * @brief Write a string to a line buffer vertically (CCW 90 degrees)
+ 466           * (text reads from bottom to top, up facing left)
+ 467           *
+ 468           * @param line a line buffer to write to
+ 469           *        (length = ::DISP_BUF_SIZE; segment = ::RENDER_LINE_SEG)
+ 470           * @param posx the LCD x position for the left side of the text block
+ 471           * x = [0, ::DISP_WIDTH-STR_WIDTH)
+ 472           * @param posy the y position for the text row relative to the left side of the
+ 473           * first character y = [0, ::DISP_HEIGHT-STR_HEIGHT)
+ 474           * @param str a null-terminated string to write
+ 475           *
+ 476           * Example
+ 477           * -------
+ 478           *
+ 479           * ~~~
+ 480           *            LCD TOP
+ 481           * RR ________________________
+ 482           * 00|                        |
+ 483           * 01|                        |
+ 484           * 02|      _____             |
+ 485           * 03|     |     |< y=WIDTH   |
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 9   
+
+ 486           * 04|     ||--- |            |
+ 487           * 05|     |   _ |            |
+ 488           * 06|     ||_| ||            |
+ 489           * 07|     |     |< y=WIDTH/2 |
+ 490           * 08|     ||_|_||            |
+ 491           * 09|     |     |            |
+ 492           * 10|     ||--- |            |
+ 493           * 11|     |_____|< y=0       |
+ 494           * 12|     ^     ^            |
+ 495           * 13|     x     x+HEIGHT     |
+ 496           * 14|________________________|
+ 497           *   C000000000011111111112222
+ 498           *   C012345678901234567890123
+ 499           * ~~~
+ 500           *
+ 501           * To display the text, "TEST" vertically on the LCD with the
+ 502           * top-left corner of the text block located on the LCD at
+ 503           * row = 11, col = 5, call:
+ 504           *
+ 505           * ~~~{.c}
+ 506           * for (y = 0; y < RENDER_GetStrSize("TEST"); y++)
+ 507           * {
+ 508           *    RENDER_VerticalStrLine(line, 5, y, "TEST");
+ 509           *    DISP_WriteLine(11 - y, line);
+ 510           * }
+ 511           * ~~~
+ 512           *
+ 513           * Note: This is an example; actual fonts may be larger/smaller.
+ 514           * In this example, ::RENDER_GetStrSize("TEST") would return the text block
+ 515           * width of 9.
+ 516           *
+ 517           ******************************************************************************/
+ 518          #if RENDER_VERTICAL_STR_LINE_BUILD
+              void RENDER_VerticalStrLine(
+                      SI_VARIABLE_SEGMENT_POINTER(line, uint8_t, RENDER_LINE_SEG),
+                      uint8_t posx,
+                      uint8_t posy,
+                      SI_VARIABLE_SEGMENT_POINTER(str, char, RENDER_STR_SEG))
+              {
+                  char c;
+                  uint8_t font_byte;
+                  uint8_t width;
+                  uint8_t charIndex;
+                  uint8_t charRow;
+                  uint16_t index;
+                  uint8_t len = 0;
+              
+                  SI_VARIABLE_SEGMENT_POINTER(line16, uint16_t, RENDER_LINE_SEG);
+              #if LSB == 0
+                  uint16_t tmp = 0;
+              #endif
+              
+                  width = RENDER_GetStrSize(str);
+              
+                  // Invalid y-value
+                  if (posy >= width || posy >= DISP_HEIGHT)
+                      return;
+              
+                  // Figure out which character in the string is on the line at the
+                  // specified y-value
+                  charIndex = posy / FONT_WIDTH;
+                  charRow = posy % FONT_WIDTH;
+              
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 10  
+
+                  while (str[len++] != 0);
+                  len--;
+                  
+                  if (charIndex >= len)
+                  {
+                      charIndex--;
+                      charRow += FONT_WIDTH;
+                  }
+              
+                  c = str[charIndex];
+              
+                  // Check for non-printable characters
+                  if (c < ' ' || c > '~')
+                  {
+                    c = ' ';
+                  }
+              
+                  index = ((((verticalthinfont_height/FONT_MAP_SPACING)-1) - (c - ' ')) * FONT_MAP_SPACING) + (7 - charR
+             -ow);
+                  font_byte = verticalthinfont_bits[index];
+              
+                  // Calculate position in line buffer
+                  line16 = (uint16_t*)(&line[posx / 8]);
+              
+                  // WARNING: This could be very dangerous without proper
+                  // bounds checking as this technically touches the
+                  // 17th byte of the 16 byte line buffer.
+                  //
+                  // However, we only allow posx to be 120 at max, which
+                  // leaves div = 15, rem = 0, which means we effectively don't
+                  // change the value of the 17th byte
+              
+              #if LSB == 0
+                  tmp = switchEndian(*line16);
+                  tmp &= ~(0xFF00 >> posx % 8);
+                  tmp |= (((uint16_t)font_byte << 8) >> (posx % 8));
+                  *line16 = switchEndian(tmp);
+              #else
+                  *line16 &= ~(0xFF00 >> posx % 8);
+                  *line16 |= (((uint16_t)font_byte << 8) >> (posx % 8));
+              #endif
+              }
+              #endif
+ 591          
+ 592          /***************************************************************************//**
+ 593           * @brief Write a sprite to a line buffer
+ 594           *
+ 595           * @param line a line buffer to write to
+ 596           *        (length = ::DISP_BUF_SIZE; segment = ::RENDER_LINE_SEG)
+ 597           * @param posx the pixel x position to start writing [0, ::DISP_WIDTH)
+ 598           * @param posy the pixel y position in the sprite currently being
+ 599           * written [0, SPRITE_HEIGHT)
+ 600           * @param sprite a pointer to a sprite array (segment = ::RENDER_SPRITE_SEG)
+ 601           * @param spriteWidth sprite width in pixels (must be divisible by 8)
+ 602           *
+ 603           ******************************************************************************/
+ 604          void RENDER_SpriteLine(
+ 605                  SI_VARIABLE_SEGMENT_POINTER(line, uint8_t, RENDER_LINE_SEG),
+ 606                  uint8_t posx,
+ 607                  uint8_t posy,
+ 608                  SI_VARIABLE_SEGMENT_POINTER(sprite, uint8_t, RENDER_SPRITE_SEG),
+ 609                  uint8_t spriteWidth)
+ 610          {
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 11  
+
+ 611   1          uint8_t i;
+ 612   1          uint8_t sprite_byte;
+ 613   1      
+ 614   1          SI_VARIABLE_SEGMENT_POINTER(line16, uint16_t, RENDER_LINE_SEG);
+ 615   1      #if LSB == 0
+                  uint16_t tmp = 0;
+              #endif
+ 618   1      
+ 619   1          // Don't write past the end of the line
+ 620   1          if (posx > (DISP_WIDTH - spriteWidth))
+ 621   1          {
+ 622   2              return;
+ 623   2          }
+ 624   1      
+ 625   1          for (i = 0; i < spriteWidth / 8; i++)
+ 626   1          {
+ 627   2              sprite_byte = sprite[i + spriteWidth / 8 * posy];
+ 628   2      
+ 629   2              // Calculate position in line buffer
+ 630   2              line16 = (SI_VARIABLE_SEGMENT_POINTER(, uint16_t, RENDER_LINE_SEG))(&line[posx / 8]);
+ 631   2      
+ 632   2              // WARNING: This could be very dangerous without proper
+ 633   2              // bounds checking as this technically touches the
+ 634   2              // 17th byte of the 16 byte line buffer.
+ 635   2              //
+ 636   2              // However, we only allow posx to be 120 at max, which
+ 637   2              // leaves div = 15, rem = 0, which means we effectively don't
+ 638   2              // change the value of the 17th byte
+ 639   2      
+ 640   2      #if LSB == 0
+                      tmp = switchEndian(*line16);
+                      tmp &= ~(0xFF00 >> posx % 8);
+                      tmp |= (((uint16_t)sprite_byte << 8) >> (posx % 8));
+                      *line16 = switchEndian(tmp);
+              #else
+ 646   2              *line16 &= ~(0xFF00 >> posx % 8);
+ 647   2              *line16 |= (((uint16_t)sprite_byte << 8) >> (posx % 8));
+ 648   2      #endif
+ 649   2      
+ 650   2              posx += 8;
+ 651   2          }
+ 652   1      }
+ 653          
+ 654          /***************************************************************************//**
+ 655           * @brief Write a sprite to a line buffer, only overwriting the
+ 656           * foreground pixels
+ 657           *
+ 658           * @param line a line buffer to write to
+ 659           *        (length = ::DISP_BUF_SIZE; segment = ::RENDER_LINE_SEG)
+ 660           * @param posx the pixel x position to start writing [0, ::DISP_WIDTH)
+ 661           * @param posy the pixel y position in the sprite currently being
+ 662           * written [0, SPRITE_HEIGHT)
+ 663           * @param sprite a pointer to a sprite array (segment = ::RENDER_SPRITE_SEG)
+ 664           * @param spriteWidth sprite width in pixels (must be divisible by 8)
+ 665           *
+ 666           ******************************************************************************/
+ 667          void RENDER_SpriteLineForeground(
+ 668                  SI_VARIABLE_SEGMENT_POINTER(line, uint8_t, RENDER_LINE_SEG),
+ 669                  uint8_t posx,
+ 670                  uint8_t posy,
+ 671                  SI_VARIABLE_SEGMENT_POINTER(sprite, uint8_t, RENDER_SPRITE_SEG),
+ 672                  uint8_t spriteWidth)
+ 673          {
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 12  
+
+ 674   1          uint8_t i;
+ 675   1          uint8_t sprite_byte;
+ 676   1      
+ 677   1          SI_VARIABLE_SEGMENT_POINTER(line16, uint16_t, RENDER_LINE_SEG);
+ 678   1      #if LSB == 0
+                  uint16_t tmp = 0;
+              #endif
+ 681   1      
+ 682   1          // Don't write past the end of the line
+ 683   1          if (posx > (DISP_WIDTH - spriteWidth))
+ 684   1          {
+ 685   2              return;
+ 686   2          }
+ 687   1      
+ 688   1          for (i = 0; i < spriteWidth / 8; i++)
+ 689   1          {
+ 690   2              sprite_byte = sprite[i + spriteWidth / 8 * posy];
+ 691   2      
+ 692   2              // Calculate position in line buffer
+ 693   2              line16 = (SI_VARIABLE_SEGMENT_POINTER(, uint16_t, RENDER_LINE_SEG))(&line[posx / 8]);
+ 694   2      
+ 695   2              // WARNING: This could be very dangerous without proper
+ 696   2              // bounds checking as this technically touches the
+ 697   2              // 17th byte of the 16 byte line buffer.
+ 698   2              //
+ 699   2              // However, we only allow posx to be 120 at max, which
+ 700   2              // leaves div = 15, rem = 0, which means we effectively don't
+ 701   2              // change the value of the 17th byte
+ 702   2      
+ 703   2      #if LSB == 0
+              
+                      tmp = switchEndian(*line16);
+              #if DISP_FOREGROUND_COLOR == COLOR_BLACK
+                      sprite_byte = ~sprite_byte;
+                      tmp &= ~(((uint16_t)sprite_byte << 8) >> (posx % 8));
+              #else
+                      tmp |= (((uint16_t)sprite_byte << 8) >> (posx % 8));
+              #endif
+                      *line16 = switchEndian(tmp);
+              #else
+ 714   2      
+ 715   2      #if DISP_FOREGROUND_COLOR == COLOR_BLACK
+                      sprite_byte = ~sprite_byte;
+                      *line16 &= ~(((uint16_t)sprite_byte << 8) >> (posx % 8));
+              #else
+ 719   2              *line16 |= (((uint16_t)sprite_byte << 8) >> (posx % 8));
+ 720   2      #endif
+ 721   2      
+ 722   2      #endif
+ 723   2              posx += 8;
+ 724   2          }
+ 725   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    909    ----
+   CONSTANT SIZE    =    800    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      41
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+   EDATA SIZE       =   ----    ----
+C51 COMPILER V9.53.0.0   RENDER                                                            04/24/2017 18:05:39 PAGE 13  
+
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
