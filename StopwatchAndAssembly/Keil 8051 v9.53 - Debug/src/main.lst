@@ -1,0 +1,65 @@
+C51 COMPILER V9.53.0.0   MAIN                                                              05/01/2017 18:33:41 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\src\main.OBJ
+COMPILER INVOKED BY: c:\SiliconLabs\SimplicityStudio\v4\developer\toolchains\keil_8051\9.53\BIN\C51.exe C:\Users\Daniel\
+                    -SimplicityStudio\v4_workspace\StopwatchAndAssembly\src\main.c OMF2 SMALL DEBUG OBJECTEXTEND ROM(LARGE) WARNINGLEVEL(2) F
+                    -LOATFUZZY(3) OPTIMIZE(8,SPEED) DEFINE(DEBUG=1) INTVECTOR(0X0000) INTPROMOTE INCDIR(C:\Users\Daniel\SimplicityStudio\v4_w
+                    -orkspace\StopwatchAndAssembly\inc;C:\Users\Daniel\SimplicityStudio\v4_workspace\StopwatchAndAssembly\inc\config;C:\Users
+                    -\Daniel\SimplicityStudio\v4_workspace\StopwatchAndAssembly\inc\graphics;C:/SiliconLabs/SimplicityStudio/v4/developer/sdk
+                    -s/8051/v4.0.4//Device/EFM8BB3/peripheral_driver/inc;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.4//kits/
+                    -common/bsp;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.4//kits/EFM8BB3_SLSTK2022A/config;C:/SiliconLabs/
+                    -SimplicityStudio/v4/developer/sdks/8051/v4.0.4//kits/common/drivers/efm8_memory_lcd/inc;C:/SiliconLabs/SimplicityStudio/
+                    -v4/developer/sdks/8051/v4.0.4//kits/common/drivers/efm8_memory_lcd/inc/graphics;C:/SiliconLabs/SimplicityStudio/v4/devel
+                    -oper/sdks/8051/v4.0.4//kits/common/drivers/efm8_memory_lcd/inc/config;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/
+                    -8051/v4.0.4//kits/common/drivers/efm8_joystick;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.4//Device/sha
+                    -red/si8051base;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.4//Device/EFM8BB3/inc) PRINT(.\src\main.lst) 
+                    -COND PAGEWIDTH(120) PAGELENGTH(65) OBJECT(.\src\main.OBJ)
+
+line level    source
+
+   1          /////////////////////////////////////////////////////////////////////////////
+   2          // Includes
+   3          /////////////////////////////////////////////////////////////////////////////
+   4          
+   5          #include "bsp.h"
+   6          #include "InitDevice.h"
+   7          #include "disp.h"
+   8          
+   9          //---------------------------------------------------------------------------
+  10          // main() Routine
+  11          // --------------------------------------------------------------------------
+  12          int main(void)
+  13          {
+  14   1        // Enter default mode
+  15   1        enter_DefaultMode_from_RESET();
+  16   1      
+  17   1        // Enable all interrupts
+  18   1        IE_EA = 1;
+  19   1      
+  20   1        DISP_Init();
+  21   1        Stopwatch_main();
+*** WARNING C206 IN LINE 21 OF C:\Users\Daniel\SimplicityStudio\v4_workspace\StopwatchAndAssembly\src\main.c: 'Stopwatch
+             -_main': missing function-prototype
+  22   1      
+  23   1        while (1);
+  24   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     13    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

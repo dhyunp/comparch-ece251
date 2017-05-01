@@ -1,0 +1,231 @@
+C51 COMPILER V9.53.0.0   STOPWATCH                                                         05/01/2017 18:33:42 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE STOPWATCH
+OBJECT MODULE PLACED IN .\src\stopwatch.OBJ
+COMPILER INVOKED BY: c:\SiliconLabs\SimplicityStudio\v4\developer\toolchains\keil_8051\9.53\BIN\C51.exe C:\Users\Daniel\
+                    -SimplicityStudio\v4_workspace\StopwatchAndAssembly\src\stopwatch.c OMF2 SMALL DEBUG OBJECTEXTEND ROM(LARGE) WARNINGLEVEL
+                    -(2) FLOATFUZZY(3) OPTIMIZE(8,SPEED) DEFINE(DEBUG=1) INTVECTOR(0X0000) INTPROMOTE INCDIR(C:\Users\Daniel\SimplicityStudio
+                    -\v4_workspace\StopwatchAndAssembly\inc;C:\Users\Daniel\SimplicityStudio\v4_workspace\StopwatchAndAssembly\inc\config;C:\
+                    -Users\Daniel\SimplicityStudio\v4_workspace\StopwatchAndAssembly\inc\graphics;C:/SiliconLabs/SimplicityStudio/v4/develope
+                    -r/sdks/8051/v4.0.4//Device/EFM8BB3/peripheral_driver/inc;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.4//
+                    -kits/common/bsp;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.4//kits/EFM8BB3_SLSTK2022A/config;C:/Silicon
+                    -Labs/SimplicityStudio/v4/developer/sdks/8051/v4.0.4//kits/common/drivers/efm8_memory_lcd/inc;C:/SiliconLabs/SimplicitySt
+                    -udio/v4/developer/sdks/8051/v4.0.4//kits/common/drivers/efm8_memory_lcd/inc/graphics;C:/SiliconLabs/SimplicityStudio/v4/
+                    -developer/sdks/8051/v4.0.4//kits/common/drivers/efm8_memory_lcd/inc/config;C:/SiliconLabs/SimplicityStudio/v4/developer/
+                    -sdks/8051/v4.0.4//kits/common/drivers/efm8_joystick;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.4//Devic
+                    -e/shared/si8051base;C:/SiliconLabs/SimplicityStudio/v4/developer/sdks/8051/v4.0.4//Device/EFM8BB3/inc) PRINT(.\src\stopw
+                    -atch.lst) COND PAGEWIDTH(120) PAGELENGTH(65) OBJECT(.\src\stopwatch.OBJ)
+
+line level    source
+
+   1          /**************************************************************************//**
+   2           * Copyright (c) 2015 by Silicon Laboratories Inc. All rights reserved.
+   3           *
+   4           * http://developer.silabs.com/legal/version/v11/Silicon_Labs_Software_License_Agreement.txt
+   5           *****************************************************************************/
+   6          ///////////////////////////////////////////////////////////////////////////////
+   7          // voltmeter.c
+   8          ///////////////////////////////////////////////////////////////////////////////
+   9          
+  10          ///////////////////////////////////////////////////////////////////////////////
+  11          // Includes
+  12          ///////////////////////////////////////////////////////////////////////////////
+  13          
+  14          #include "bsp.h"
+  15          #include "tick.h"
+  16          #include "disp.h"
+  17          #include "render.h"
+  18          #include "voltmeter.h"
+  19          #include "joystick.h"
+  20          #include "adc.h"
+  21          #include "thinfont.h"
+  22          #include "InitDevice.h"
+  23          #include <SI_EFM8BB3_Register_Enums.h>
+  24          
+  25          #define SYSCLK             3062000
+  26          
+  27          #define LED_TOGGLE_RATE    800
+  28          
+  29          SI_SBIT(LED1, SFR_P1, 4);                 //P1.4 LED1
+  30          SI_SBIT(BTN0, SFR_P0, 2);                 // P0.2 BTN0
+  31          SI_SBIT(BTN1, SFR_P0, 3);                 // P0.3 BTN1
+  32          
+  33          SI_SEGMENT_VARIABLE(Line[DISP_BUF_SIZE], uint8_t, RENDER_LINE_SEG);
+  34          SI_SEGMENT_VARIABLE(String[DISP_BUF_SIZE], uint8_t, RENDER_LINE_SEG);
+  35          
+  36          uint16_t time;
+  37          char timeStr[9];
+  38          uint16_t Laps[9];
+  39          uint8_t lapcount;
+  40          uint8_t currentlap;
+  41          uint8_t start_track;
+  42          
+  43          void drawText(SI_VARIABLE_SEGMENT_POINTER(str, char, RENDER_STR_SEG), uint8_t rowNum, uint8_t fontScale)
+  44          {
+C51 COMPILER V9.53.0.0   STOPWATCH                                                         05/01/2017 18:33:42 PAGE 2   
+
+  45   1        uint8_t i, j;
+  46   1      
+  47   1        for (i = 0; i < FONT_HEIGHT; i++)
+  48   1        {
+  49   2          RENDER_ClrLine(Line);
+  50   2          RENDER_Large_StrLine(Line, 4, i, (SI_VARIABLE_SEGMENT_POINTER(, char, RENDER_STR_SEG))str, fontScale);
+  51   2      
+  52   2          for (j = 1; j < fontScale + 1; j++)
+  53   2          {
+  54   3            DISP_WriteLine(rowNum + (i * fontScale) + j, Line);
+  55   3          }
+  56   2        }
+  57   1      }
+  58          
+  59          void timeToString(uint16_t t, char * str)
+  60          {
+  61   1        int8_t pos = 6;
+  62   1        uint8_t count = 0;
+  63   1      
+  64   1        str[pos--] = '\0';
+  65   1        str[pos--] = 's';
+  66   1      
+  67   1        for (; pos >= 0; pos--)
+  68   1        {
+  69   2          if (count == 1)
+  70   2          {
+  71   3            str[pos--] = '.';
+  72   3          }
+  73   2              str[pos] = (t % 10) + '0';
+  74   2      
+  75   2              t /= 10;
+  76   2              count+=1;
+  77   2        }
+  78   1      }
+  79          
+  80          void initTimer0(){
+  81   1              uint8_t TCON_save;
+  82   1              TCON_save = TCON;
+  83   1              TCON &= ~TCON_TR0__BMASK & ~TCON_TR1__BMASK;
+  84   1              TH0 = 0xC0; //(0xC0 << TH0_TH0__SHIFT);
+  85   1              TCON |= (TCON_save & TCON_TR0__BMASK) | (TCON_save & TCON_TR1__BMASK);
+  86   1      
+  87   1              CKCON0 = CKCON0_SCA__SYSCLK_DIV_48;
+  88   1      
+  89   1              TMOD = TMOD_T0M__MODE2 | TMOD_T1M__MODE0 | TMOD_CT0__TIMER
+  90   1                                      | TMOD_GATE0__DISABLED | TMOD_CT1__TIMER | TMOD_GATE1__DISABLED;
+  91   1      
+  92   1              TCON |= TCON_TR0__RUN;
+  93   1      
+  94   1              IE_ET0 = 0;
+  95   1      }
+  96          
+  97          void initBTNinterrupts(void){
+  98   1              IT01CF = IT01CF_IN0PL__ACTIVE_LOW | IT01CF_IN0SL__P0_2
+  99   1                                      | IT01CF_IN1PL__ACTIVE_LOW | IT01CF_IN1SL__P0_3;
+ 100   1              IE_EX0 = 1;
+ 101   1              IE_EX1 = 1;
+ 102   1      }
+ 103          
+ 104          void drawTime(){
+ 105   1              timeToString(time, timeStr);
+ 106   1              drawText(timeStr, 20, 2);
+ 107   1      }
+C51 COMPILER V9.53.0.0   STOPWATCH                                                         05/01/2017 18:33:42 PAGE 3   
+
+ 108          
+ 109          void drawLap(){
+ 110   1              uint16_t timeTemp;
+ 111   1              if(currentlap != lapcount && lapcount<9){
+ 112   2                      Laps[currentlap] = time;
+ 113   2                      if(currentlap == 0){
+ 114   3                              drawText("Laps:", 40, 1);
+ 115   3                              timeToString(time, timeStr);
+ 116   3                              drawText(timeStr, 50, 1);
+ 117   3                      }else {
+ 118   3                              timeTemp = Laps[currentlap]-Laps[currentlap-1];
+ 119   3                              timeToString(timeTemp, timeStr);
+ 120   3                              drawText(timeStr, 50+(8*currentlap), 1);
+ 121   3                      }
+ 122   2                      currentlap = lapcount;
+ 123   2              }
+ 124   1      }
+ 125          
+ 126          //INTERRUPTS
+ 127          SI_INTERRUPT (INT0_ISR, INT0_IRQn)
+ 128          {
+ 129   1              if(BTN0 == 0){
+ 130   2                      IE_ET0 = !IE_ET0;
+ 131   2                      start_track = !start_track;
+ 132   2              }
+ 133   1              IE_EX0 = 0;
+ 134   1      }
+ 135          
+ 136          SI_INTERRUPT (INT1_ISR, INT1_IRQn)
+ 137          {
+ 138   1              if(BTN1 == 0){
+ 139   2                      lapcount++;
+ 140   2              }
+ 141   1              IE_EX1 = 0;
+ 142   1      }
+ 143          
+ 144          SI_INTERRUPT (TIMER0_ISR, TIMER0_IRQn)
+ 145          {
+ 146   1         static uint16_t counter = 0;
+ 147   1      
+ 148   1         counter++;
+ 149   1      
+ 150   1         if(counter == LED_TOGGLE_RATE)
+ 151   1         {
+ 152   2                time++;
+ 153   2                counter = 0;
+ 154   2         }
+ 155   1      }
+ 156          
+ 157          extern void start(void);
+ 158          
+ 159          void Stopwatch_main(void)
+ 160          {
+ 161   1              initBTNinterrupts();
+ 162   1              initTimer0();
+ 163   1      
+ 164   1              drawText("Stopwatch", 0, 2);
+ 165   1              drawText("DanP&ChrisE", 120, 1); //Draws string in bottom right corner
+ 166   1              time = 0;
+ 167   1              lapcount = 0;
+ 168   1              currentlap = 0;
+ 169   1              start_track = 0;
+ 170   1      
+C51 COMPILER V9.53.0.0   STOPWATCH                                                         05/01/2017 18:33:42 PAGE 4   
+
+ 171   1              while(1)
+ 172   1              {
+ 173   2                      drawTime();
+ 174   2                      drawLap();
+ 175   2                      if((start_track == 1) && (IE_EX0 == 0)){
+ 176   3                              IE_ET0 = 0;
+ 177   3                              start();
+ 178   3                              IE_ET0 = 1;
+ 179   3                      }
+ 180   2      
+ 181   2                      if(BTN0 == 1) //BTN0 UNPRESSED
+ 182   2                              IE_EX0 = 1; //TURN BACK ON EXTERNAL (BTN) INTERRUPTS
+ 183   2                      if(BTN1 == 1)
+ 184   2                              IE_EX1 = 1;
+ 185   2              }
+ 186   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    594    ----
+   CONSTANT SIZE    =    828    ----
+   XDATA SIZE       =     32    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     34      14
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
